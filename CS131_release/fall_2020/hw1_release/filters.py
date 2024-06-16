@@ -29,7 +29,21 @@ def conv_nested(image, kernel):
     out = np.zeros((Hi, Wi))
 
     ### YOUR CODE HERE
-    pass
+    # 首先需要对kernel进行flip，根据公式定义
+    kernel = np.flip(kernel)
+
+    # 遍历每一个像素点计算，原本应该做一个padding的操作，但是有更巧妙的方法
+    for i in range(Hi):
+        for j in range(Wi):
+            sum = 0
+            for m in range(Hk):
+                for n in range(Wk):
+                    # 如果当前要计算的像素点超出了kernel的范围就跳过即可，巧妙避开了padding的操作
+                    if i+m-1<0 or j+n-1<0 or i+m-1>=Hi or j+n-1>=Wi:
+                        continue
+                    sum += image[i+m-1][j+n-1] * kernel[m][n]
+            out[i][j] = sum
+            
     ### END YOUR CODE
 
     return out
@@ -55,8 +69,11 @@ def zero_pad(image, pad_height, pad_width):
     H, W = image.shape
     out = None
 
-    ### YOUR CODE HERE
-    pass
+    ### YOUR CODE HERE 这里为了方便直接使用numpy的padding函数，当然也可以先创建一个全0数组，然后填充image
+    out = np.zeros((H+2*pad_height,W+2*pad_width))
+    for i in range(H):
+        for j in range(W):
+            out[pad_height+i][pad_width+j] = image[i][j]
     ### END YOUR CODE
     return out
 
@@ -85,7 +102,11 @@ def conv_fast(image, kernel):
     out = np.zeros((Hi, Wi))
 
     ### YOUR CODE HERE
-    pass
+    kernel = np.flip(kernel)
+    image = zero_pad(image, Hk//2, Wk//2)
+    for i in range(Hi):
+        for j in range(Wi):
+            out[i][j] = np.sum(np.multiply(image[i:i+Hk,j:j+Wk],kernel))
     ### END YOUR CODE
 
     return out
@@ -105,7 +126,8 @@ def cross_correlation(f, g):
 
     out = None
     ### YOUR CODE HERE
-    pass
+    g = np.flip(g)    # 把模板翻转下，再调用之前写好的卷积函数即可
+    out = conv_fast(f, g)
     ### END YOUR CODE
 
     return out
@@ -127,7 +149,10 @@ def zero_mean_cross_correlation(f, g):
 
     out = None
     ### YOUR CODE HERE
-    pass
+    
+    g = g - np.mean(g)
+    g = np.flip(g)
+    out = conv_fast(f, g)
     ### END YOUR CODE
 
     return out
@@ -151,7 +176,20 @@ def normalized_cross_correlation(f, g):
 
     out = None
     ### YOUR CODE HERE
-    pass
+    # 值得注意的是，这里的归一化是对每一个滑动窗口内的区域图像进行归一化，而不是对整个图像进行归一化
+    g = (g - np.mean(g))/np.std(g)
+    
+    Hf, Wf = f.shape
+    Hg, Wg = g.shape
+    out = np.zeros((Hf, Wf))
+    
+    height = Hg//2
+    width = Wg//2
+    image = zero_pad(f, height, width)
+    for i in range(Hf):
+        for j in range(Wf):
+            sub_image = (image[i:i+Hg,j:j+Wg] - np.mean(image[i:i+Hg,j:j+Wg]))/np.std(image[i:i+Hg,j:j+Wg])
+            out[i,j] = np.sum(np.multiply(sub_image,g))
     ### END YOUR CODE
 
     return out
